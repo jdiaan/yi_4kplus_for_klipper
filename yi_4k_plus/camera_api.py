@@ -1,23 +1,26 @@
-'''
+"""
 Author: github @jdiaan, bilibili @i典典典典 UID=24334629, jdiaan@163.com
 Date: 2023-09-06 21:51:39
 LastEditors: github @jdiaan, bilibili @i典典典典 UID=24334629, jdiaan@163.com
-LastEditTime: 2023-09-06 21:56:49
+LastEditTime: 2023-09-07 15:51:18
 FilePath: /yi_4kplus_for_klipper/yi_4k_plus/camera_api.py
 Description: 操控相机的api
 jdiaan@163.com
 Copyright (c) 2023 by github @jdiaan, bilibili @i典典典典 UID=24334629, All Rights Reserved.
-'''
+"""
 import os
 import socket
 import json
 import time
 import threading
-import logging
 import traceback
 import ftplib
 import telnetlib
 import queue
+
+from . import log
+
+logging = log.LOGGER
 
 
 class CameraAPI:
@@ -550,7 +553,7 @@ class CameraAPI:
         :return: dict
         """
         _re = None
-        if "rval" in data and data["rval"] == 0:
+        if data and "rval" in data and data["rval"] == 0:
             if "param" in data:
                 _re = data["param"]
 
@@ -842,6 +845,8 @@ class CameraFtp:
         self.__download_event = threading.Event()
         self.__is_download = False
 
+        self.__redownload_number_dict = {}
+
     def connect(self) -> bool:
         """
         连接相机
@@ -979,16 +984,37 @@ class CameraFtp:
                 try:
                     with open(local_file, "wb") as file:
                         self.__ftp.retrbinary(f"RETR {remote_file}", file.write)
+
                 except Exception:
-                    logging.error("无法下载文件：%s", remote_file)
-                    logging.info(traceback.format_exc())
-                    self.__is_download = False
+                    logging.error("无法下载文件：%s。准备重试", remote_file)
+                    logging.debug(traceback.format_exc())
+
+                    logging.info("准备重连相机,%s:%d", self.__ip, self.__port)
+                    self.disconnect()
+                    self.connect()
+
+                    time.sleep(5)
+
+                    if remote_file not in self.__redownload_number_dict:
+                        self.__redownload_number_dict[remote_file] = 1
+                    else:
+                        self.__redownload_number_dict[remote_file] += 1
+
+                    if self.__redownload_number_dict[remote_file] <= 5:
+                        self.download_file(
+                            local_file=local_file, remote_file=remote_file
+                        )
+                    else:
+                        logging.error("下载文件：%s超时，取消下载", remote_file)
+                        del self.__redownload_number_dict[remote_file]
+
                     continue
 
                 logging.info("成功下载文件：%s", local_file)
 
-            elif self.__download_event.is_set():
                 self.__is_download = False
+
+            elif self.__download_event.is_set():
                 break
 
             else:

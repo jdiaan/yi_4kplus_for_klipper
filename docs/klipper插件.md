@@ -2,7 +2,7 @@
  * @Author: github @jdiaan, bilibili @i典典典典 UID=24334629, jdiaan@163.com
  * @Date: 2023-09-06 17:26:52
  * @LastEditors: github @jdiaan, bilibili @i典典典典 UID=24334629, jdiaan@163.com
- * @LastEditTime: 2023-09-06 20:36:20
+ * @LastEditTime: 2023-09-11 16:54:54
  * @FilePath: \yi_4kplus_for_klipper\docs\klipper插件.md
  * @Description: klipper插件说明
  * jdiaan@163.com
@@ -241,6 +241,20 @@ class MyClass:
 ```
 TEST_PRINT text=我不想说话
 ```
+
+---
+
+### 使用全局变量
+手册中有一条说明：  
+> * 不应使用全局变量。全部状态量应存储于 "printer objects"，并通过 load_config()进行访问。...  
+
+我认为是直接导入的模块文件不应该使用全局变量，否则可能会污染klipper整个环境变量，可能会出现冲突。因此需要将环境变量储存在特殊的地方，具体位置是在klipper中```class Printer```类中的一个变量变量：```self.objects```,相当于一个字典，所有变量通过key（变量名）来操作。可以在klipeer任意地方查询
+#### 创建全局变量：
+```printer.add_object("变量的名称", 变量)```  
+在文件[yi_4k_plus.py](/yi_4k_plus/yi_4k_plus.py)第126行中创建了一个klipper全局变量(```self.printer.add_object("yi_4k+_img_path_object", Img(config))```)
+#### 获取变量（指针）：
+```printer.load_object(config, "变量的名称")```  
+在文件[yi_4k_plus.py](/yi_4k_plus/yi_4k_plus.py)第263行中创建了一个klipper全局变量(```self.__img_obj = self.__printer.load_object(config, "yi_4k+_img_path_object")```)  
 
 ---
 

@@ -160,7 +160,7 @@ photo_setting = {
         "+2.0",
     ],  # 曝光补偿
     Setting.photo_stamp: ["off", "time", "date", "date/time"],  # 时间戳
-    Setting.quick_view: ["Off", "0.5S", "1S", "2S", "3S", "5S"],  # QuickView
+    Setting.quick_view: ["off", "0.5S", "1S", "2S", "3S", "5S"],  # QuickView
     Setting.photo_file_type: ["jpg", "raw+jpg"],  # 文件格式
 }
 

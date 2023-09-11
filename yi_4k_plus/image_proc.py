@@ -1,30 +1,33 @@
-'''
+"""
 Author: github @jdiaan, bilibili @i典典典典 UID=24334629, jdiaan@163.com
 Date: 2023-09-06 21:51:39
 LastEditors: github @jdiaan, bilibili @i典典典典 UID=24334629, jdiaan@163.com
-LastEditTime: 2023-09-06 21:57:52
-FilePath: /yi_4kplus_for_klipper/yi_4k_plus/image_proc.py
+LastEditTime: 2023-09-07 14:17:58
+FilePath: \yi_4kplus_for_klipper\yi_4k_plus\image_proc.py
 Description: 图像处理
 jdiaan@163.com
 Copyright (c) 2023 by github @jdiaan, bilibili @i典典典典 UID=24334629, All Rights Reserved.
-'''
+"""
 import time
 import os
 import subprocess
-import logging
 
 import exifread
 
+from . import log
+
+logging = log.LOGGER
+
 
 def get_ffmpeg_concat(
-    img_file_list: list, min_time: int = None, max_time: int = None, last_img_time=5
+    img_file_list: list, min_time: int = 0.2, max_time: int = 0.4, last_img_time=0.5
 ) -> str:
     """
     从图像列表里获取时间戳,制作成ffmpeg concat 的文件格式
 
     :param img_file_list: list,
-    :param min_time: int, 映射的最短时间,如果为None,则为实际的最短时间
-    :param max_time: int, 映射的最长时间,如果为None,则为实际的最长时间
+    :param min_time: int, 映射的最短时间
+    :param max_time: int, 映射的最长时间
     :param last_img_time: int, 最后一帧持续时间
     :return: str
     """
@@ -83,8 +86,10 @@ def get_ffmpeg_concat(
             ffmpeg_concat_text += f"file '{item}'\n"
 
         else:
-            if index == len(__concat_ls) - 2:
+            if index == len(__concat_ls) - 2:  # 最后一帧
                 real_time = item
+            elif real_min_time == real_max_time:
+                real_time = (max_time - min_time) / 2
             else:
                 nor_time = (item - real_min_time) / (real_max_time - real_min_time)
                 real_time = nor_time * (max_time - min_time) + min_time
@@ -141,13 +146,16 @@ def img_2_video_by_concat(
         f"scale={video_resolution[0]}:{video_resolution[1]},fps={str(video_fps)}",
         out_file_path,
     ]
+
+    logging.debug("准备渲染:%s", out_file_path)
+
     popen = subprocess.Popen(
         ffmpeg_cmd,
         shell=False,
     )
 
-    logging.debug("视频文件路径:%s", out_file_path)
     _re = popen.wait()
+    logging.debug("视频文件路径:%s", out_file_path)
     if _re == 0:
         return True
 
