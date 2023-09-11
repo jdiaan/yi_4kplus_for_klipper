@@ -231,11 +231,12 @@ file_type-文件格式:{str(setting.photo_setting[setting.Setting.photo_file_typ
         cam_n = gcmd.get("name", "ALL")
 
         p_name = self.print_stats.filename
+        now = datetime.datetime.now()
+        now_time = now.strftime("timelapse_%Y%m%d_%H%M%S.mp4")
         if not p_name:
-            now = datetime.datetime.now()
-            file_name = now.strftime("timelapse_%Y%m%d_%H%M%S.mp4")
+            file_name = now_time
         else:
-            file_name = "yi_timelapse_" + os.path.splitext(p_name)[0] + ".mp4"
+            file_name = f"yi_timelapse_{os.path.splitext(p_name)[0]}_{now_time}.mp4"
 
         if cam_n == "ALL":
             for can in CameraForKlipper.CAMERA_DICT.values():
