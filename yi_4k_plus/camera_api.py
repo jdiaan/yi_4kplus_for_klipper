@@ -20,8 +20,6 @@ import queue
 
 from . import log
 
-logging = log.LOGGER
-
 
 class CameraAPI:
     """
@@ -86,9 +84,9 @@ class CameraAPI:
             try:
                 self.disconnect()
                 self.__sock.close()
-                logging.info("自动关闭连接")
+                log.LOGGER.info("自动关闭连接")
             except Exception:
-                logging.debug("del无法正常关闭socket,可能是已经关闭了")
+                log.LOGGER.debug("del无法正常关闭socket,可能是已经关闭了")
 
         self.__sock = None
         self.__recv_event.set()
@@ -115,23 +113,23 @@ class CameraAPI:
             self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.__sock.settimeout(time_out)
             try:
-                logging.debug("准备连接相机%s:%d", self.__ip, self.__port)
+                log.LOGGER.debug("准备连接相机%s:%d", self.__ip, self.__port)
                 self.__sock.connect((self.__ip, self.__port))
                 is_con = True
                 break
             except TimeoutError:
-                logging.debug("连接socket超时")
+                log.LOGGER.debug("连接socket超时")
             except Exception:
-                logging.debug("连接失败,错误信息:\n%s", traceback.format_exc())
+                log.LOGGER.debug("连接失败,错误信息:\n%s", traceback.format_exc())
 
             _start_times += 1
-            logging.warning("连接失败,准备第%d次重试,共%d次", i + 1, attempts)
+            log.LOGGER.warning("连接失败,准备第%d次重试,共%d次", i + 1, attempts)
             time.sleep(0.1)
 
         if is_con:
-            logging.debug("连接相机socket成功,ip:%s", self.__ip)
+            log.LOGGER.debug("连接相机socket成功,ip:%s", self.__ip)
         else:
-            logging.error("连接相机失败,ip:%s", self.__ip)
+            log.LOGGER.error("连接相机失败,ip:%s", self.__ip)
             return False
 
         # 创建接收线程
@@ -163,13 +161,13 @@ class CameraAPI:
             data = self.__get_data(self.AMBA_START_SESSION)[0]
             if data:
                 break
-            logging.warning("连接失败,准备第%d次重试,共%d次", i + 1, attempts)
+            log.LOGGER.warning("连接失败,准备第%d次重试,共%d次", i + 1, attempts)
             time.sleep(0.5)
 
         if data:
-            logging.info("连接相机成功!ip:%s", self.__ip)
+            log.LOGGER.info("连接相机成功!ip:%s", self.__ip)
         else:
-            logging.error("连接相机失败,ip:%s", self.__ip)
+            log.LOGGER.error("连接相机失败,ip:%s", self.__ip)
             return False
 
         # 处理
@@ -182,7 +180,7 @@ class CameraAPI:
             self.__rtsp += obj
             if i != len(_rtsp_ls) - 1:
                 self.__rtsp += "/"
-        logging.debug("rtsp服务器为:%s", self.__rtsp)
+        log.LOGGER.debug("rtsp服务器为:%s", self.__rtsp)
 
         self.__is_con = True
         return True
@@ -204,9 +202,9 @@ class CameraAPI:
 
         # 处理
         if self.__is_success_run(data):
-            logging.info("成功断开连接")
+            log.LOGGER.info("成功断开连接")
         else:
-            logging.info("断开连接")
+            log.LOGGER.info("断开连接")
 
         self.__is_con = False
         return True
@@ -226,7 +224,7 @@ class CameraAPI:
         # 处理
         param = self.__get_param(data)
 
-        logging.info("相机所有参数为:%s", param)
+        log.LOGGER.info("相机所有参数为:%s", param)
 
         return data
 
@@ -244,9 +242,9 @@ class CameraAPI:
 
         param = self.__get_param(data)
         if param is None:
-            logging.error("相机没有%s参数", _type)
+            log.LOGGER.error("相机没有%s参数", _type)
         else:
-            logging.info("相机参数%s值为:%s", _type, param)
+            log.LOGGER.info("相机参数%s值为:%s", _type, param)
 
         return param
 
@@ -269,9 +267,9 @@ class CameraAPI:
         param = self.__get_param(data)
         _type = self.__get_type(data)
         if param is None:
-            logging.error("相机没有%s参数", key)
+            log.LOGGER.error("相机没有%s参数", key)
         else:
-            logging.info("参数%s值为:%s", _type, param)
+            log.LOGGER.info("参数%s值为:%s", _type, param)
             _re = True
 
         return _re
@@ -293,9 +291,9 @@ class CameraAPI:
 
         param = self.__get_param(data)
         if is_total:
-            logging.info("SD卡总容量为:%s", param)
+            log.LOGGER.info("SD卡总容量为:%s", param)
         else:
-            logging.info("SD卡剩余容量为:%s", param)
+            log.LOGGER.info("SD卡剩余容量为:%s", param)
 
         return param
 
@@ -314,7 +312,7 @@ class CameraAPI:
         data = self.__get_data(msgid=self.AMBA_GET_SINGLE_SETTING_OPTIONS)[0]
 
         if data is None:
-            logging.error("相机没有%s参数", key)
+            log.LOGGER.error("相机没有%s参数", key)
             return None
         param = self.__get_param(data)
 
@@ -326,9 +324,9 @@ class CameraAPI:
                 _re = data["options"]
 
         if _re is None:
-            logging.info("参数%s没有可选的值,key")
+            log.LOGGER.info("参数%s没有可选的值,key")
         else:
-            logging.info("参数%s值有:%s", key, _re)
+            log.LOGGER.info("参数%s值有:%s", key, _re)
 
         return _re
 
@@ -344,14 +342,14 @@ class CameraAPI:
         data = self.__get_data(msgid=self.AMBA_GET_DEVICEINFO)[0]
 
         if data is None:
-            logging.info("无法查看硬件信息")
+            log.LOGGER.info("无法查看硬件信息")
         else:
             if "msg_id" in data:
                 del data["msg_id"]
             if "rval" in data:
                 del data["rval"]
 
-            logging.info("硬件信息为:%s", data)
+            log.LOGGER.info("硬件信息为:%s", data)
 
         return data
 
@@ -369,9 +367,9 @@ class CameraAPI:
         param = self.__get_param(data)
 
         if param:
-            logging.info("相机电量剩余:%s%%", param)
+            log.LOGGER.info("相机电量剩余:%s%%", param)
         else:
-            logging.info("无法查看相机电量剩余")
+            log.LOGGER.info("无法查看相机电量剩余")
         return param
 
     def start_rtsp(self) -> bool | str:
@@ -389,9 +387,9 @@ class CameraAPI:
         if self.__is_success_run(data):
             _re = self.__rtsp
 
-            logging.info("已成功打开视频流,rtsp服务器为:%s", self.__rtsp)
+            log.LOGGER.info("已成功打开视频流,rtsp服务器为:%s", self.__rtsp)
         else:
-            logging.error("无法打开视频流")
+            log.LOGGER.error("无法打开视频流")
 
         return _re
 
@@ -409,9 +407,9 @@ class CameraAPI:
         _re = False
         if self.__is_success_run(data):
             _re = True
-            logging.info("已成功关闭视频流")
+            log.LOGGER.info("已成功关闭视频流")
         else:
-            logging.warning("无法正常关闭视频流,也许已经关闭或从未启动")
+            log.LOGGER.warning("无法正常关闭视频流,也许已经关闭或从未启动")
 
         return _re
 
@@ -419,7 +417,7 @@ class CameraAPI:
         """
         获取流视频地址
         """
-        logging.info("rtsp的地址为:%s", self.__rtsp)
+        log.LOGGER.info("rtsp的地址为:%s", self.__rtsp)
         return self.__rtsp
 
     def start_record(self) -> bool:
@@ -435,9 +433,9 @@ class CameraAPI:
         if self.__is_success_run(data):
             _re = True
 
-            logging.info("已成功开始录像")
+            log.LOGGER.info("已成功开始录像")
         else:
-            logging.error("无法开始录像")
+            log.LOGGER.error("无法开始录像")
 
         return _re
 
@@ -454,16 +452,16 @@ class CameraAPI:
 
         _re = None
         if self.__is_success_run(data):
-            logging.info("已成功关闭录像")
+            log.LOGGER.info("已成功关闭录像")
 
             _re = self.__get_video_save_file()
             while not _re:
                 _re = self.__get_video_save_file()
 
-            logging.info("相机完成一次录制，文件为：%s", _re)
+            log.LOGGER.info("相机完成一次录制，文件为：%s", _re)
 
         else:
-            logging.warning("无法正常关闭录像,也许已经结束或从未开始录像")
+            log.LOGGER.warning("无法正常关闭录像,也许已经结束或从未开始录像")
 
         return _re
 
@@ -477,7 +475,7 @@ class CameraAPI:
         data = self.__get_data(msgid=self.AMBA_GET_RECORD_TIME)[0]
         param = self.__get_param(data)
 
-        logging.info("目前拍摄时长:%s", param)
+        log.LOGGER.info("目前拍摄时长:%s", param)
 
         return param
 
@@ -539,9 +537,9 @@ class CameraAPI:
             _re = self.set_setting("capture_mode", mode)
 
         if not _re:
-            logging.error("无法将相机设置为此模式，%s", mode)
+            log.LOGGER.error("无法将相机设置为此模式，%s", mode)
         else:
-            logging.info("相机成功设置为%s模式", mode)
+            log.LOGGER.info("相机成功设置为%s模式", mode)
 
         return _re
 
@@ -567,7 +565,7 @@ class CameraAPI:
         :return: dict
         """
         _re = None
-        if "msg_id" in data:
+        if data and "msg_id" in data:
             _re = data["msg_id"]
 
         return _re
@@ -580,7 +578,7 @@ class CameraAPI:
         :return: dict
         """
         _re = None
-        if "type" in data:
+        if data and "type" in data:
             _re = data["type"]
 
         return _re
@@ -675,12 +673,12 @@ class CameraAPI:
         :param data: str,
         :return: None
         """
-        logging.debug("一份msgid7消息处理")
+        log.LOGGER.debug("一份msgid7消息处理")
         if data["type"] == "video_record_complete":
             self.__video_save_path = data["param"]
 
         elif data["type"] == "photo_taken":
-            logging.info("收到一份照片存储信息，%s", data["param"])
+            log.LOGGER.info("收到一份照片存储信息，%s", data["param"])
 
             with self.__photo_data_lock:
                 self.__photo_data_ls.append(data["param"])
@@ -695,7 +693,7 @@ class CameraAPI:
         msg_ls = []
 
         if not data:
-            logging.warning("收到空消息，可能是相机拒绝连接")
+            log.LOGGER.warning("收到空消息，可能是相机拒绝连接")
             # 执行退出
             self.disconnect()
             return None
@@ -715,8 +713,8 @@ class CameraAPI:
                 len_str = 0
                 last_len = 0  # 开始位置
                 for i, text in enumerate(data_ls):
-                    logging.debug("数据可能是多个json的组合")
-                    logging.debug("    第%d数据:%s", i, text)
+                    log.LOGGER.debug("数据可能是多个json的组合")
+                    log.LOGGER.debug("    第%d数据:%s", i, text)
                     if i == 0:  # 第一位永远是空 ""
                         continue
 
@@ -728,7 +726,7 @@ class CameraAPI:
 
                     if len_r == i:
                         __data = data[last_len:len_str]
-                        logging.debug("分离第%d个json,%s", len(msg_ls) + 1, __data)
+                        log.LOGGER.debug("分离第%d个json,%s", len(msg_ls) + 1, __data)
 
                         _data = json.loads(__data)
                         msg_ls.append(_data)
@@ -738,7 +736,7 @@ class CameraAPI:
                 __temp_data = ""  # 清除缓存
 
             else:
-                logging.debug("无法解析json,应该是不完整的.写入缓存,准备下一个数据")
+                log.LOGGER.debug("无法解析json,应该是不完整的.写入缓存,准备下一个数据")
 
                 __temp_data = data
 
@@ -754,10 +752,10 @@ class CameraAPI:
 
             elif msg_id == 16777220:
                 if msg["rval"] != 0:
-                    logging.debug("接收到一条无法拍照的信息，自动重新发送拍照指令")
+                    log.LOGGER.debug("接收到一条无法拍照的信息，自动重新发送拍照指令")
                     self.take_photo()
                 else:
-                    logging.info("成功发送一条拍照指令")
+                    log.LOGGER.info("成功发送一条拍照指令")
 
             else:
                 _re_ls.append(msg)
@@ -772,14 +770,14 @@ class CameraAPI:
         接收信息参考：
         https://gist.github.com/franga2000/1be2aa18cb3409e57af149883c06e34a
         """
-        logging.debug("接收消息的多线程开始运行")
+        log.LOGGER.debug("接收消息的多线程开始运行")
         self.__sock.setblocking(False)
         self.__sock.settimeout(0.0)
         while True:
             try:
                 # _dict = self.__recv_data()
                 data = self.__sock.recv(1024)
-                logging.debug("接收到一条新消息,%s", data)
+                log.LOGGER.debug("接收到一条新消息,%s", data)
                 # 处理接收到的信息
                 data = self.__analysis_data(data)
 
@@ -793,23 +791,23 @@ class CameraAPI:
 
         # 退出线程的工作
         self.__recv_thread = None
-        logging.debug("接收消息的多线程退出")
+        log.LOGGER.debug("接收消息的多线程退出")
 
     def __send_run(self):
         """
         多线程发消息使用
         """
-        logging.debug("发送消息的多线程开始运行")
+        log.LOGGER.debug("发送消息的多线程开始运行")
         while True:
             if not self.__send_queue.empty():
                 send_data = self.__send_queue.get()
                 # is_send_success = False
                 try:
                     self.__sock.send(bytes(send_data, "utf-8"))
-                    logging.debug("发送json至相机,%s", send_data)
+                    log.LOGGER.debug("发送json至相机,%s", send_data)
                     # is_send_success = True
                 except Exception:
-                    logging.debug("发送json至相机失败。%s", send_data)
+                    log.LOGGER.debug("发送json至相机失败。%s", send_data)
 
                 # if is_send_success:
                 #     # 接收返回消息
@@ -824,7 +822,7 @@ class CameraAPI:
 
         # 退出线程的工作
         self.__send_thread = None
-        logging.debug("发送消息的多线程退出")
+        log.LOGGER.debug("发送消息的多线程退出")
 
 
 class CameraFtp:
@@ -859,19 +857,19 @@ class CameraFtp:
         try:
             self.__ftp.connect(self.__ip, self.__port)
         except Exception:
-            logging.error("无法连接相机ftp服务")
-            logging.debug(traceback.format_exc())
+            log.LOGGER.error("无法连接相机ftp服务")
+            log.LOGGER.debug(traceback.format_exc())
             return False
 
         if not self.__login():
             return False
 
-        logging.info("成功连接相机ftp")
+        log.LOGGER.info("成功连接相机ftp")
 
         if not isinstance(self.__download_thread, threading.Thread):
             self.__download_event.clear()
             self.__download_thread = threading.Thread(target=self.__download_file_run)
-            self.__download_thread.daemon = True
+            self.__download_thread.daemon = False
             self.__download_thread.start()
 
         return True
@@ -895,17 +893,17 @@ class CameraFtp:
         """
         try:
             self.__tn.close()
-            logging.debug("成功关闭telent连接")
+            log.LOGGER.debug("成功关闭telent连接")
         except Exception:
-            logging.debug("无法正常关闭telent，%s", traceback.format_exc())
+            log.LOGGER.debug("无法正常关闭telent，%s", traceback.format_exc())
 
         try:
             self.__ftp.quit()
-            logging.info("成功断开ftp")
+            log.LOGGER.info("成功断开ftp")
 
         except Exception:
-            logging.debug(traceback.format_exc())
-            logging.info("无法正常关闭ftp，可能是已经断开或者从未启动")
+            log.LOGGER.debug(traceback.format_exc())
+            log.LOGGER.info("无法正常关闭ftp，可能是已经断开或者从未启动")
 
         self.__download_event.set()
 
@@ -932,9 +930,9 @@ class CameraFtp:
         try:
             self.__tn.read_until(b"H2 login:", timeout=10)
         except Exception:
-            logging.error("无法连接相机telent服务")
+            log.LOGGER.error("无法连接相机telent服务")
             return False
-        logging.debug("成功登录telent端口")
+        log.LOGGER.debug("成功登录telent端口")
         self.__tn.write(b"root\n")
         time.sleep(2)
 
@@ -945,7 +943,7 @@ class CameraFtp:
         )  # 打开ftp端口
 
         time.sleep(2)
-        logging.debug(self.__tn.read_very_eager())
+        log.LOGGER.debug(self.__tn.read_very_eager())
 
         return True
 
@@ -960,14 +958,14 @@ class CameraFtp:
         try:
             self.__ftp.login(user, passwd)
         except Exception:
-            logging.error("无法登录ftp服务")
+            log.LOGGER.error("无法登录ftp服务")
             return False
 
-        logging.debug("成功登录ftp端口")
+        log.LOGGER.debug("成功登录ftp端口")
         return True
 
     def __download_file_run(self):
-        logging.debug("下载的多线程开始运行")
+        log.LOGGER.debug("下载的多线程开始运行")
         while True:
             if not self.__download_queue.empty():
                 self.__is_download = True
@@ -975,7 +973,7 @@ class CameraFtp:
                 data_dict = self.__download_queue.get()
                 local_file = data_dict["local_file"]
                 remote_file = data_dict["remote_file"]
-                logging.debug("准备开始下载%s", remote_file)
+                log.LOGGER.debug("准备开始下载%s", remote_file)
 
                 local_dir = os.path.dirname(local_file)
                 if not os.path.exists(local_dir):
@@ -986,10 +984,10 @@ class CameraFtp:
                         self.__ftp.retrbinary(f"RETR {remote_file}", file.write)
 
                 except Exception:
-                    logging.error("无法下载文件：%s。准备重试", remote_file)
-                    logging.debug(traceback.format_exc())
+                    log.LOGGER.error("无法下载文件：%s。准备重试", remote_file)
+                    log.LOGGER.debug(traceback.format_exc())
 
-                    logging.info("准备重连相机,%s:%d", self.__ip, self.__port)
+                    log.LOGGER.info("准备重连相机,%s:%d", self.__ip, self.__port)
                     self.disconnect()
                     self.connect()
 
@@ -1005,12 +1003,12 @@ class CameraFtp:
                             local_file=local_file, remote_file=remote_file
                         )
                     else:
-                        logging.error("下载文件：%s超时，取消下载", remote_file)
+                        log.LOGGER.error("下载文件：%s超时，取消下载", remote_file)
                         del self.__redownload_number_dict[remote_file]
 
                     continue
 
-                logging.info("成功下载文件：%s", local_file)
+                log.LOGGER.info("成功下载文件：%s", local_file)
 
                 self.__is_download = False
 
@@ -1023,4 +1021,4 @@ class CameraFtp:
             self.__is_download = False
 
         self.__is_download = False
-        logging.debug("下载的多线程结束运行")
+        log.LOGGER.debug("下载的多线程结束运行")

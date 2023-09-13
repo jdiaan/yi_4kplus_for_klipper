@@ -16,8 +16,6 @@ import exifread
 
 from . import log
 
-logging = log.LOGGER
-
 
 def get_ffmpeg_concat(
     img_file_list: list, min_time: int = 0.2, max_time: int = 0.4, last_img_time=0.5
@@ -109,7 +107,7 @@ def create_ffmpeg_concat_file(ffmpeg_concat_text: str, out_file_path: str) -> No
     """
     with open(out_file_path, "w", encoding="utf-8") as file:
         file.write(ffmpeg_concat_text)
-    logging.debug("concat文件路径:%s", out_file_path)
+    log.LOGGER.debug("concat文件路径:%s", out_file_path)
 
 
 def img_2_video_by_concat(
@@ -147,7 +145,7 @@ def img_2_video_by_concat(
         out_file_path,
     ]
 
-    logging.debug("准备渲染:%s", out_file_path)
+    log.LOGGER.debug("准备渲染:%s", out_file_path)
 
     popen = subprocess.Popen(
         ffmpeg_cmd,
@@ -155,7 +153,7 @@ def img_2_video_by_concat(
     )
 
     _re = popen.wait()
-    logging.debug("视频文件路径:%s", out_file_path)
+    log.LOGGER.debug("视频文件路径:%s", out_file_path)
     if _re == 0:
         return True
 

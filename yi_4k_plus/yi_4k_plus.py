@@ -25,9 +25,10 @@ class CameraForKlipper:
     关于camera的操作脚本
     """
 
-    CAMERA_DICT = {}
+    CAMERA_OBJ_NAME = "yi_4k+_camera_object"
 
     def __init__(self, config):
+        self.config = config
         self.printer = config.get_printer()
         # 获取名称
         self.cam_name = config.get_name().split()[-1]
@@ -122,15 +123,17 @@ class CameraForKlipper:
             desc=self.cmd_YI_RENDER_VIDEO_help,
         )
 
-        # 创建变量
-        self.printer.add_object("yi_4k+_img_path_object", Img(config))
+        # 全局变量
+        is_4k_obj = False
+        for key, value in self.printer.lookup_objects():
+            if key == self.CAMERA_OBJ_NAME:
+                is_4k_obj = True
+                break
 
-        CameraForKlipper.CAMERA_DICT[self.cam_name] = CameraControl(
-            config=config, ip=self.ip, port=self.port, camera_name=self.cam_name
-        )
-
-    # def get_status(self, eventtime):
-    #     return self.fan.get_status(eventtime)
+        if not is_4k_obj:
+            self.printer.add_object(self.CAMERA_OBJ_NAME, CameraManage(config))
+        cam_obj = self.printer.load_object(config, self.CAMERA_OBJ_NAME)
+        cam_obj.add_camera(ip=self.ip, port=self.port, camera_name=self.cam_name)
 
     cmd_YI_TAKE_PHOTO_help = "take photo"
 
@@ -139,13 +142,12 @@ class CameraForKlipper:
         拍摄的命令
         """
         cam_n = gcmd.get("name", "ALL")
+        cam_obj = self.printer.load_object(self.config, self.CAMERA_OBJ_NAME)
 
         if cam_n == "ALL":
-            for can in CameraForKlipper.CAMERA_DICT.values():
-                can.take_photo()
+            cam_obj.take_photo(camera_name=None)
         else:
-            if cam_n in CameraForKlipper.CAMERA_DICT:
-                CameraForKlipper.CAMERA_DICT[cam_n].take_photo()
+            cam_obj.take_photo(camera_name=cam_n)
 
     cmd_YI_GET_PHOTO_OPTIONS_help = "get photo setting options"
 
@@ -176,19 +178,18 @@ file_type-文件格式:{str(setting.photo_setting[setting.Setting.photo_file_typ
         连接相机
         """
         cam_n = gcmd.get("name", "ALL")
+        cam_obj = self.printer.load_object(self.config, self.CAMERA_OBJ_NAME)
 
         if cam_n == "ALL":
-            for can in CameraForKlipper.CAMERA_DICT.values():
-                can.connect()
-                can.change_photo_settings(self.photo_setting_dict)
-
+            cam_obj.connect(camera_name=None)
+            cam_obj.change_photo_settings(
+                camera_name=None, setting_dict=self.photo_setting_dict
+            )
         else:
-            # is_con = False
-            if cam_n in CameraForKlipper.CAMERA_DICT:
-                CameraForKlipper.CAMERA_DICT[cam_n].connect()
-                CameraForKlipper.CAMERA_DICT[cam_n].change_photo_settings(
-                    self.photo_setting_dict
-                )
+            cam_obj.connect(camera_name=cam_n)
+            cam_obj.change_photo_settings(
+                camera_name=cam_n, setting_dict=self.photo_setting_dict
+            )
 
     cmd_YI_DISCONNECT_CAMERA_help = "disconnect camera"
 
@@ -197,14 +198,12 @@ file_type-文件格式:{str(setting.photo_setting[setting.Setting.photo_file_typ
         断开连接
         """
         cam_n = gcmd.get("name", "ALL")
+        cam_obj = self.printer.load_object(self.config, self.CAMERA_OBJ_NAME)
 
         if cam_n == "ALL":
-            for can in CameraForKlipper.CAMERA_DICT.values():
-                can.disconnect()
-
+            cam_obj.disconnect(camera_name=None)
         else:
-            if cam_n in CameraForKlipper.CAMERA_DICT:
-                CameraForKlipper.CAMERA_DICT[cam_n].disconnect()
+            cam_obj.disconnect(camera_name=cam_n)
 
     cmd_YI_DOWNLOAD_help = "download camera files"
 
@@ -213,14 +212,12 @@ file_type-文件格式:{str(setting.photo_setting[setting.Setting.photo_file_typ
         从相机下载文件
         """
         cam_n = gcmd.get("name", "ALL")
+        cam_obj = self.printer.load_object(self.config, self.CAMERA_OBJ_NAME)
 
         if cam_n == "ALL":
-            for can in CameraForKlipper.CAMERA_DICT.values():
-                can.download_photo(self.frame_path)
-
+            cam_obj.download_photo(camera_name=None, out_dir=self.frame_path)
         else:
-            if cam_n in CameraForKlipper.CAMERA_DICT:
-                CameraForKlipper.CAMERA_DICT[cam_n].download_photo(self.frame_path)
+            cam_obj.download_photo(camera_name=cam_n, out_dir=self.frame_path)
 
     cmd_YI_RENDER_VIDEO_help = "render video"
 
@@ -229,24 +226,31 @@ file_type-文件格式:{str(setting.photo_setting[setting.Setting.photo_file_typ
         视频渲染
         """
         cam_n = gcmd.get("name", "ALL")
-
+        cam_obj = self.printer.load_object(self.config, self.CAMERA_OBJ_NAME)
         p_name = self.print_stats.filename
         now = datetime.datetime.now()
-        now_time = now.strftime("timelapse_%Y%m%d_%H%M%S.mp4")
+        now_time = now.strftime("yi_%Y%m%d_%H%M%S.mp4")
         if not p_name:
             file_name = now_time
         else:
-            file_name = f"yi_timelapse_{os.path.splitext(p_name)[0]}_{now_time}.mp4"
+            file_name = (
+                f"yi_{self.cam_name}_{os.path.splitext(p_name)[0]}_{now_time}.mp4"
+            )
 
         if cam_n == "ALL":
-            for can in CameraForKlipper.CAMERA_DICT.values():
-                can.img_to_video(self.ffmpeg_binary_path, self.output_path, file_name)
-
+            cam_obj.img_to_video(
+                camera_name=None,
+                ffmpeg_path=self.ffmpeg_binary_path,
+                out_dir=self.output_path,
+                video_name=file_name,
+            )
         else:
-            if cam_n in CameraForKlipper.CAMERA_DICT:
-                CameraForKlipper.CAMERA_DICT[cam_n].img_to_video(
-                    self.ffmpeg_binary_path, self.output_path, file_name
-                )
+            cam_obj.img_to_video(
+                camera_name=cam_n,
+                ffmpeg_path=self.ffmpeg_binary_path,
+                out_dir=self.output_path,
+                video_name=file_name,
+            )
 
 
 class CameraControl:
@@ -261,13 +265,13 @@ class CameraControl:
 
         self.__printer = config.get_printer()
         self.__gcode = self.__printer.lookup_object("gcode")
-        self.__img_obj = self.__printer.load_object(config, "yi_4k+_img_path_object")
+        self.__img_list = []
 
         self.__api = camera_api.CameraAPI(self.__ip, self.__port)
         self.__ftp = camera_api.CameraFtp(self.__ip)
 
         self.__is_con_cam = False
-        # self.__is_con_ftp = False
+        self.__is_con_ftp = False
 
     def cam_init(self) -> None:
         """
@@ -329,12 +333,12 @@ class CameraControl:
             photo = photo.split("fuse_d")[1]
             photo_old_n = os.path.basename(photo)
             photo_new_n = (
-                f"{self.__name}_{self.__img_obj.get_img_number(self.__name)}"
+                f"{self.__name}_{len(self.__img_list)}"
                 f"{os.path.splitext(photo_old_n)[1]}"
             )
 
             local_img_path = os.path.join(out_dir, photo_new_n)
-            self.__img_obj.add_img_path(self.__name, local_img_path)
+            self.__img_list.append(local_img_path)
 
             log.LOGGER.info("准备下载%s=>%s", photo, local_img_path)
             self.__ftp.download_file(local_img_path, photo)
@@ -385,7 +389,7 @@ class CameraControl:
         video_file_path = os.path.join(out_dir, video_name)
 
         concat_text = image_proc.get_ffmpeg_concat(
-            self.__img_obj.get_imgs_path(self.__name),
+            self.__img_list,
             min_time=3 / 25,
             max_time=20 / 25,
             last_img_time=5 / 25,
@@ -398,9 +402,9 @@ class CameraControl:
         )
 
         if is_success:
-            image_proc.remove_im_gfiles(self.__img_obj.get_imgs_path(self.__name))
+            image_proc.remove_im_gfiles(self.__img_list)
         image_proc.remove_im_gfiles([concat_file_path])
-        self.__img_obj.clean_img_path(self.__name)
+        self.__img_list = []
 
         log.LOGGER.info("渲染完成")
 
@@ -411,51 +415,123 @@ class CameraControl:
         for key, value in setting_dict.items():
             self.__api.set_setting(key, value)
 
+    def get_name(self):
+        """
+        获取名称
+        """
+        return self.__name
 
-class Img:
+
+class CameraManage:
     """
-    存储img path
+    摄像机管理
     """
 
     def __init__(self, config) -> None:
         self.__config = config
 
-        self.__img_path_dixt = {}
+        self.__camera_list = []
+        self.__iter_num = 0
 
-    def get_imgs_path(self, camera_name: str) -> list:
-        """
-        获得保存的图片列表
-        """
-        _re = None
-        if camera_name in self.__img_path_dixt:
-            _re = self.__img_path_dixt[camera_name]
+    def __iter__(self):
+        self.__iter_num = 0
+        return self
 
-        return _re
+    def __next__(self):
+        self.__iter_num += 1
+        if self.__iter_num > len(self.__camera_list):
+            raise StopIteration()
+        return self.__camera_list[self.__iter_num]
 
-    def add_img_path(self, camera_name: str, img_path: str) -> None:
-        """
-        添加图片
-        """
-        if camera_name not in self.__img_path_dixt:
-            self.__img_path_dixt[camera_name] = []
-        self.__img_path_dixt[camera_name].append(img_path)
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            if key < len(self.__camera_list):
+                return self.__camera_list[key]
+        elif isinstance(key, str):
+            for camera in self.__camera_list:
+                if camera.get_name() == key:
+                    return camera
+        return None
 
-    def clean_img_path(self, camera_name: str) -> None:
+    def add_camera(self, ip: str, port: int, camera_name: str) -> None:
         """
-        删除图片
+        添加相机
         """
-        if camera_name in self.__img_path_dixt:
-            del self.__img_path_dixt[camera_name]
+        if self[camera_name] is not None:
+            raise self.__config.error(f"已有相同命名的相机注册：{camera_name}")
 
-    def get_img_number(self, camera_name: str) -> int:
-        """
-        获取图片数量
-        """
-        _re = 0
-        if camera_name in self.__img_path_dixt:
-            _re = len(self.__img_path_dixt[camera_name])
+        camera = CameraControl(
+            config=self.__config, ip=ip, port=port, camera_name=camera_name
+        )
+        self.__camera_list.append(camera)
 
-        return _re
+    def connect(self, camera_name: str | None) -> None:
+        """
+        连接相机
+        """
+        if camera_name is None:
+            for camera in self.__camera_list:
+                camera.connect()
+        else:
+            self[camera_name].connect()
+
+    def disconnect(self, camera_name: str | None) -> None:
+        """
+        断开相机
+        """
+        if camera_name is None:
+            for camera in self.__camera_list:
+                camera.disconnect()
+        else:
+            self[camera_name].disconnect()
+
+    def take_photo(self, camera_name: str | None) -> None:
+        """
+        拍照
+        """
+        if camera_name is None:
+            for camera in self.__camera_list:
+                camera.take_photo()
+        else:
+            self[camera_name].take_photo()
+
+    def download_photo(self, camera_name: str | None, out_dir: str) -> None:
+        """
+        下载图片
+        """
+        if camera_name is None:
+            for camera in self.__camera_list:
+                camera.download_photo(out_dir=out_dir)
+        else:
+            self[camera_name].download_photo(out_dir=out_dir)
+
+    def img_to_video(
+        self, camera_name: str | None, ffmpeg_path: str, out_dir: str, video_name: str
+    ) -> None:
+        """
+        渲染
+        """
+        if camera_name is None:
+            for camera in self.__camera_list:
+                camera.img_to_video(
+                    ffmpeg_path=ffmpeg_path, out_dir=out_dir, video_name=video_name
+                )
+        else:
+            self[camera_name].img_to_video(
+                ffmpeg_path=ffmpeg_path, out_dir=out_dir, video_name=video_name
+            )
+
+    def change_photo_settings(
+        self, camera_name: str | None, setting_dict: dict
+    ) -> None:
+        """
+        修改设置
+        """
+        if camera_name is None:
+            for camera in self.__camera_list:
+                camera.change_photo_settings(setting_dict=setting_dict)
+        else:
+            self[camera_name].change_photo_settings(setting_dict=setting_dict)
 
 
 def load_config(config):
